@@ -16,6 +16,7 @@ return [
     */
 
     'default' => env('DB_CONNECTION', 'mysql'),
+    'database' => env('DB_DATABASE', env('DB_NAME', 'laravel')),
 
     /*
     |--------------------------------------------------------------------------
