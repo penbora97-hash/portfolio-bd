@@ -80,3 +80,17 @@ Route::middleware('auth:sanctum')->group(function () use ($publicResources) {
     Route::patch('/contact-messages/{contactMessage}/read', [ContactMessageController::class, 'markRead']);
     Route::delete('/contact-messages/{contactMessage}', [ContactMessageController::class, 'destroy']);
 });
+
+
+Route::get('/debug-db', function () {
+    $c = config('database.connections.pgsql');
+    return [
+        'host'         => $c['host'],
+        'port'         => $c['port'],
+        'database'     => $c['database'],
+        'username_len' => strlen((string) $c['username']),
+        'password_len' => strlen((string) $c['password']),
+        'DB_NAME_set'  => getenv('DB_NAME') !== false,
+        'DB_USERNAME_set' => getenv('DB_USERNAME') !== false,
+    ];
+});

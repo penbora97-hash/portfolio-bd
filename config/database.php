@@ -16,7 +16,7 @@ return [
     */
 
     'default' => env('DB_CONNECTION', 'mysql'),
-    'database' => env('DB_DATABASE', env('DB_NAME', 'laravel')),
+
 
     /*
     |--------------------------------------------------------------------------
@@ -70,6 +70,7 @@ return [
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', env('DB_NAME', 'forge')),
+            'database' => env('DB_DATABASE', env('DB_NAME', 'laravel')),
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
