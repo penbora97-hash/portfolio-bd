@@ -25,8 +25,8 @@ class CertificateController extends Controller
             'issuer'      => 'required|string|max:255',
             'date'        => 'required|string|max:100',
             'description' => 'nullable|string',
-            'url'         => 'nullable|url',
-            'sort_order'  => 'integer',
+            'url'         => 'nullable|string',
+            'sort_order'  => 'nullable|integer',
             'image'       => 'nullable|image|max:4096',
         ]);
 
@@ -52,12 +52,11 @@ class CertificateController extends Controller
             'issuer'      => 'sometimes|string|max:255',
             'date'        => 'sometimes|string|max:100',
             'description' => 'nullable|string',
-            'url'         => 'nullable|url',
-            'sort_order'  => 'integer',
+            'url'         => 'nullable|string',
+            'sort_order'  => 'nullable|integer',
             'image'       => 'nullable|image|max:4096',
         ]);
 
-        // ✅ Upload ទៅ Cloudinary (បើមានរូបថ្មី)
         if ($request->hasFile('image')) {
             $uploadedFileUrl = $request->file('image')
                 ->storeOnCloudinary('portfolio/certificates')
