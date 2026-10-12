@@ -31,48 +31,54 @@ class ProfileController extends Controller
 
     public function update(Request $request)
     {
-        $data = $request->validate([
-            'name'           => ['sometimes', 'string', 'max:255'],
-            'headline'       => ['nullable', 'string', 'max:255'],
-            'bio'            => ['nullable', 'string'],
-            'phone'          => ['nullable', 'string', 'max:50'],
-            'location'       => ['nullable', 'string', 'max:255'],
-            'years_learning' => ['nullable', 'integer', 'min:0'],
-            'avatar'         => ['nullable', 'image', 'max:4096'],
-            'resume'         => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
-        ]);
+        try {
+            $data = $request->validate([
+                'name'           => ['sometimes', 'string', 'max:255'],
+                'headline'       => ['nullable', 'string', 'max:255'],
+                'bio'            => ['nullable', 'string'],
+                'phone'          => ['nullable', 'string', 'max:50'],
+                'location'       => ['nullable', 'string', 'max:255'],
+                'years_learning' => ['nullable', 'integer', 'min:0'],
+                'avatar'         => ['nullable', 'image', 'max:4096'],
+                'resume'         => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
+            ]);
 
-        $user = $request->user();
-        if (isset($data['name'])) {
-            $user->update(['name' => $data['name']]);
+            $user = $request->user();
+            if (isset($data['name'])) {
+                $user->update(['name' => $data['name']]);
+            }
+
+            $profile = Profile::firstOrNew(['user_id' => $user->id]);
+            $profile->fill(
+                collect($data)->only(['headline', 'bio', 'phone', 'location', 'years_learning'])->all()
+            );
+
+            // ✅ Upload Avatar ទៅ Cloudinary
+            if ($request->hasFile('avatar')) {
+                $uploaded = $request->file('avatar')->storeOnCloudinary('portfolio/avatars');
+                $profile->avatar = $uploaded->getSecurePath();
+            }
+
+            // ✅ Upload Resume ទៅ Cloudinary
+            if ($request->hasFile('resume')) {
+                $uploaded = $request->file('resume')->storeOnCloudinary('portfolio/resumes');
+                $profile->resume_path = $uploaded->getSecurePath();
+            }
+
+            $profile->save();
+
+            return response()->json([
+                'message' => 'Profile updated successfully',
+                'profile' => $profile,
+            ]);
+        } catch (\Exception $e) {
+            // ✅ បង្ហាញ Error ពិតប្រាកដ
+            return response()->json([
+                'message' => 'Failed to update profile',
+                'error'   => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ], 500);
         }
-
-        $profile = Profile::firstOrNew(['user_id' => $user->id]);
-        $profile->fill(
-            collect($data)->only(['headline', 'bio', 'phone', 'location', 'years_learning'])->all()
-        );
-
-        // ✅ Upload Avatar ទៅ Cloudinary
-        if ($request->hasFile('avatar')) {
-            $uploadedFileUrl = $request->file('avatar')
-                ->storeOnCloudinary('portfolio/avatars')
-                ->getSecurePath();
-            $profile->avatar = $uploadedFileUrl;
-        }
-
-        // ✅ Upload Resume ទៅ Cloudinary
-        if ($request->hasFile('resume')) {
-            $uploadedFileUrl = $request->file('resume')
-                ->storeOnCloudinary('portfolio/resumes')
-                ->getSecurePath();
-            $profile->resume_path = $uploadedFileUrl;
-        }
-
-        $profile->save();
-
-        return response()->json([
-            'message' => 'Profile updated successfully',
-            'profile' => $profile,
-        ]);
     }
 }
