@@ -80,5 +80,14 @@ Route::middleware('auth:sanctum')->group(function () use ($publicResources) {
     Route::patch('/contact-messages/{contactMessage}/read', [ContactMessageController::class, 'markRead']);
     Route::delete('/contact-messages/{contactMessage}', [ContactMessageController::class, 'destroy']);
 });
-
+Route::get('/check-cloudinary', function () {
+    return response()->json([
+        'cloudinary_url' => env('CLOUDINARY_URL') ? 'SET' : 'NOT SET',
+        'cloudinary_key' => env('CLOUDINARY_KEY') ? 'SET' : 'NOT SET',
+        'cloudinary_secret' => env('CLOUDINARY_SECRET') ? 'SET' : 'NOT SET',
+        'cloudinary_cloud' => env('CLOUDINARY_CLOUD_NAME') ? 'SET' : 'NOT SET',
+        'app_env' => env('APP_ENV'),
+        'filesystem_disk' => env('FILESYSTEM_DISK'),
+    ]);
+});
 
