@@ -5,11 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Certificate;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class CertificateController extends Controller
 {
-    // Public: Get all certificates
     public function index()
     {
         return Certificate::orderBy('sort_order')->latest()->get();
@@ -20,7 +18,6 @@ class CertificateController extends Controller
         return $certificate;
     }
 
-    // Admin: Create
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -35,8 +32,12 @@ class CertificateController extends Controller
 
         $data['user_id'] = $request->user()->id;
 
+        // ✅ Upload ទៅ Cloudinary
         if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store('certificates', 'public');
+            $uploadedFileUrl = $request->file('image')
+                ->storeOnCloudinary('portfolio/certificates')
+                ->getSecurePath();
+            $data['image_path'] = $uploadedFileUrl;
         }
 
         $certificate = Certificate::create($data);
@@ -44,7 +45,6 @@ class CertificateController extends Controller
         return response()->json($certificate, 201);
     }
 
-    // Admin: Update
     public function update(Request $request, Certificate $certificate)
     {
         $data = $request->validate([
@@ -57,12 +57,12 @@ class CertificateController extends Controller
             'image'       => 'nullable|image|max:4096',
         ]);
 
+        // ✅ Upload ទៅ Cloudinary (បើមានរូបថ្មី)
         if ($request->hasFile('image')) {
-            // លុបរូបចាស់
-            if ($certificate->image_path) {
-                Storage::disk('public')->delete($certificate->image_path);
-            }
-            $data['image_path'] = $request->file('image')->store('certificates', 'public');
+            $uploadedFileUrl = $request->file('image')
+                ->storeOnCloudinary('portfolio/certificates')
+                ->getSecurePath();
+            $data['image_path'] = $uploadedFileUrl;
         }
 
         $certificate->update($data);
@@ -70,14 +70,9 @@ class CertificateController extends Controller
         return response()->json($certificate);
     }
 
-    // Admin: Delete
     public function destroy(Certificate $certificate)
     {
-        if ($certificate->image_path) {
-            Storage::disk('public')->delete($certificate->image_path);
-        }
         $certificate->delete();
-
         return response()->json(['message' => 'Deleted']);
     }
 }

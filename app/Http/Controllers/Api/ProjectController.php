@@ -5,21 +5,18 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProjectController extends Controller
 {
     public function index()
     {
-        return response()->json(
-            Project::with('skills')->orderBy('sort_order')->latest()->get()
-        );
+        return Project::with('skills')->orderBy('sort_order')->latest()->get();
     }
 
     public function show(Project $project)
     {
-        return response()->json($project->load(['skills', 'images']));
+        return $project->load(['skills', 'images']);
     }
 
     public function store(Request $request)
@@ -27,7 +24,7 @@ class ProjectController extends Controller
         $data = $request->validate([
             'title'       => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'thumbnail'   => ['nullable', 'image', 'max:2048'],
+            'thumbnail'   => ['nullable', 'image', 'max:4096'],
             'demo_url'    => ['nullable', 'url'],
             'github_url'  => ['nullable', 'url'],
             'is_featured' => ['boolean'],
@@ -39,8 +36,12 @@ class ProjectController extends Controller
         $data['user_id'] = $request->user()->id;
         $data['slug'] = $this->uniqueSlug($data['title']);
 
+        // ✅ Upload ទៅ Cloudinary
         if ($request->hasFile('thumbnail')) {
-            $data['thumbnail'] = $request->file('thumbnail')->store('projects', 'public');
+            $uploadedFileUrl = $request->file('thumbnail')
+                ->storeOnCloudinary('portfolio/projects')
+                ->getSecurePath();
+            $data['thumbnail'] = $uploadedFileUrl;
         }
 
         $project = Project::create($data);
@@ -54,7 +55,7 @@ class ProjectController extends Controller
         $data = $request->validate([
             'title'       => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'thumbnail'   => ['nullable', 'image', 'max:2048'],
+            'thumbnail'   => ['nullable', 'image', 'max:4096'],
             'demo_url'    => ['nullable', 'url'],
             'github_url'  => ['nullable', 'url'],
             'is_featured' => ['boolean'],
@@ -63,11 +64,12 @@ class ProjectController extends Controller
             'skill_ids.*' => ['exists:skills,id'],
         ]);
 
+        // ✅ Upload ទៅ Cloudinary (បើមានរូបថ្មី)
         if ($request->hasFile('thumbnail')) {
-            if ($project->thumbnail) {
-                Storage::disk('public')->delete($project->thumbnail);
-            }
-            $data['thumbnail'] = $request->file('thumbnail')->store('projects', 'public');
+            $uploadedFileUrl = $request->file('thumbnail')
+                ->storeOnCloudinary('portfolio/projects')
+                ->getSecurePath();
+            $data['thumbnail'] = $uploadedFileUrl;
         }
 
         $project->update($data);
@@ -81,30 +83,18 @@ class ProjectController extends Controller
 
     public function destroy(Project $project)
     {
-        try {
-            // លុបរូបភាព Thumbnail
-            if ($project->thumbnail) {
-                \Storage::disk('public')->delete($project->thumbnail);
-            }
+        $project->delete();
+        return response()->json(['message' => 'Deleted']);
+    }
 
-            // លុបរូបភាព Gallery ទាំងអស់ (បើមាន)
-            foreach ($project->images as $image) {
-                \Storage::disk('public')->delete($image->image_path);
-                $image->delete();
-            }
-
-            // លុបទំនាក់ទំនង Skill (pivot table)
-            $project->skills()->detach();
-
-            // លុប Project
-            $project->delete();
-
-            return response()->json(['message' => 'Project deleted successfully']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to delete project',
-                'error'   => $e->getMessage(),
-            ], 500);
+    private function uniqueSlug(string $title): string
+    {
+        $slug = Str::slug($title);
+        $original = $slug;
+        $i = 2;
+        while (Project::where('slug', $slug)->exists()) {
+            $slug = $original . '-' . $i++;
         }
+        return $slug;
     }
 }

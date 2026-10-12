@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ProjectImageController extends Controller
 {
@@ -17,8 +16,13 @@ class ProjectImageController extends Controller
             'caption' => ['nullable', 'string', 'max:255'],
         ]);
 
+        // ✅ Upload ទៅ Cloudinary
+        $uploadedFileUrl = $request->file('image')
+            ->storeOnCloudinary('portfolio/project-images')
+            ->getSecurePath();
+
         $image = $project->images()->create([
-            'image_path' => $request->file('image')->store('project-images', 'public'),
+            'image_path' => $uploadedFileUrl,
             'caption'    => $data['caption'] ?? null,
         ]);
 
@@ -27,9 +31,7 @@ class ProjectImageController extends Controller
 
     public function destroy(ProjectImage $image)
     {
-        Storage::disk('public')->delete($image->image_path);
         $image->delete();
-
         return response()->json(['message' => 'Deleted']);
     }
 }

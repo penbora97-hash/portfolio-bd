@@ -9,7 +9,6 @@ use Illuminate\Http\Request;
 
 class ProfileController extends Controller
 {
-    // Public: portfolio owner's info
     public function show()
     {
         $user = User::with(['profile', 'socialLinks'])->firstOrFail();
@@ -20,31 +19,27 @@ class ProfileController extends Controller
             'email'          => $user->email,
             'role'           => $user->profile?->headline ?? 'Full-Stack Developer',
             'headline'       => $user->profile?->headline,
-            'bio'            => $user->profile?->bio ?? 'Passionate developer...',
-            'location'       => $user->profile?->location ?? 'Phnom Penh, Cambodia',
-            'phone'              => $user->profile?->phone,
-            'photo_url'      => $user->profile?->avatar
-                ? url('storage/' . $user->profile->avatar)
-                : null,
-            'resume_url'     => $user->profile?->resume_path
-                ? url('storage/' . $user->profile->resume_path)
-                : null,
-            'years_learning' => $user->profile?->years_learning ?? 2, // ✅ ទាញពី DB
+            'bio'            => $user->profile?->bio,
+            'location'       => $user->profile?->location,
+            'phone'          => $user->profile?->phone,
+            'photo_url'      => $user->profile?->avatar,
+            'resume_url'     => $user->profile?->resume_path,
+            'years_learning' => $user->profile?->years_learning ?? 2,
             'social_links'   => $user->socialLinks ?? [],
         ]);
     }
 
-    // Admin: create or update profile
     public function update(Request $request)
     {
         $data = $request->validate([
-            'name'     => ['sometimes', 'string', 'max:255'],
-            'headline' => ['nullable', 'string', 'max:255'],
-            'bio'      => ['nullable', 'string'],
-            'phone'    => ['nullable', 'string', 'max:50'],
-            'location' => ['nullable', 'string', 'max:255'],
-            'avatar'   => ['nullable', 'image', 'max:2048'],
-            'resume'   => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
+            'name'           => ['sometimes', 'string', 'max:255'],
+            'headline'       => ['nullable', 'string', 'max:255'],
+            'bio'            => ['nullable', 'string'],
+            'phone'          => ['nullable', 'string', 'max:50'],
+            'location'       => ['nullable', 'string', 'max:255'],
+            'years_learning' => ['nullable', 'integer', 'min:0'],
+            'avatar'         => ['nullable', 'image', 'max:4096'],
+            'resume'         => ['nullable', 'file', 'mimes:pdf', 'max:5120'],
         ]);
 
         $user = $request->user();
@@ -53,20 +48,24 @@ class ProfileController extends Controller
         }
 
         $profile = Profile::firstOrNew(['user_id' => $user->id]);
-        $profile->fill(collect($data)->only(['headline', 'bio', 'phone', 'location'])->all());
+        $profile->fill(
+            collect($data)->only(['headline', 'bio', 'phone', 'location', 'years_learning'])->all()
+        );
 
+        // ✅ Upload Avatar ទៅ Cloudinary
         if ($request->hasFile('avatar')) {
-            // លុប Avatar ចាស់
-            if ($profile->avatar) {
-                \Storage::disk('public')->delete($profile->avatar);
-            }
-            $profile->avatar = $request->file('avatar')->store('avatars', 'public');
+            $uploadedFileUrl = $request->file('avatar')
+                ->storeOnCloudinary('portfolio/avatars')
+                ->getSecurePath();
+            $profile->avatar = $uploadedFileUrl;
         }
+
+        // ✅ Upload Resume ទៅ Cloudinary
         if ($request->hasFile('resume')) {
-            if ($profile->resume_path) {
-                \Storage::disk('public')->delete($profile->resume_path);
-            }
-            $profile->resume_path = $request->file('resume')->store('resumes', 'public');
+            $uploadedFileUrl = $request->file('resume')
+                ->storeOnCloudinary('portfolio/resumes')
+                ->getSecurePath();
+            $profile->resume_path = $uploadedFileUrl;
         }
 
         $profile->save();
